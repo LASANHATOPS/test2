@@ -78,3 +78,44 @@ app.get("/plain", (req, res) => {
   res.type("text/plain");
   res.send(`${lastCommand.id}|${lastCommand.command}|${lastCommand.door}|${lastCommand.author}`);
 });
+
+let lastAlert = {
+  id: 0,
+  team: "",
+  mode: "",
+  author: "",
+  message: "",
+};
+
+client.on("messageCreate", (msg) => {
+  if (msg.author.bot) return;
+  if (msg.channel.id !== ALLOWED_CHANNEL_ID) return;
+
+  const args = msg.content.trim().split(/\s+/);
+  const cmd = args[0].toLowerCase();
+
+  if (cmd === "!teamalert" || cmd === "!teampm") {
+    const team = args[1] || "";
+    const message = args.slice(2).join(" ");
+
+    if (team === "" || message === "") {
+      msg.reply("❌ Use: `!teamalert TIME mensagem` ou `!teampm TIME mensagem`");
+      return;
+    }
+
+    lastAlert = {
+      id: Date.now(),
+      team: team,
+      mode: cmd === "!teamalert" ? "alert" : "pm",
+      author: msg.author.tag,
+      message: message,
+    };
+
+    msg.reply(`✅ Mensagem enviada para sincronização: \`${team}\``);
+  }
+});
+
+app.get("/alertplain", (req, res) => {
+  res.type("text/plain");
+  res.send(`${lastAlert.id}|${lastAlert.mode}|${lastAlert.team}|${lastAlert.author}|${lastAlert.message}`);
+});
