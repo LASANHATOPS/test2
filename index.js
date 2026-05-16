@@ -73,3 +73,8 @@ app.listen(PORT, () => {
 });
 
 client.login(DISCORD_TOKEN);
+
+app.get("/plain", (req, res) => {
+  res.type("text/plain");
+  res.send(`${lastCommand.id}|${lastCommand.command}|${lastCommand.door}|${lastCommand.author}`);
+});
