@@ -1,10 +1,18 @@
 {
   "departments": {
-    "Administrative Department": ["LASANHATOPS"],
-    "Security Department": ["LASANHATOPS"],
+    "Administrative Department": [
+      "LASANHATOPS"
+    ],
+    "Security Department": [
+      "LASANHATOPS"
+    ],
     "Scientific Department": [],
     "Medical Department": [],
-    "Mobile Task Force": ["LASANHATOPS"]
+    "Mobile Task Force": [
+      "LASANHATOPS"
+    ]
   },
-  "customMorphWhitelist": ["LASANHATOPS"]
+  "customMorphWhitelist": [
+    "LASANHATOPS"
+  ]
 }
