@@ -153,3 +153,51 @@ client.login(process.env.DISCORD_TOKEN);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("A14 API running"));
+
+const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+
+app.get("/deploy", async (req, res) => {
+
+    const commands = [
+        new SlashCommandBuilder()
+            .setName("wl_add")
+            .setDescription("Add whitelist")
+            .addStringOption(o =>
+                o.setName("user").setDescription("User").setRequired(true)
+            )
+            .addStringOption(o =>
+                o.setName("department").setDescription("Department").setRequired(true)
+            ),
+
+        new SlashCommandBuilder()
+            .setName("wl_remove")
+            .setDescription("Remove whitelist")
+            .addStringOption(o =>
+                o.setName("user").setDescription("User").setRequired(true)
+            )
+            .addStringOption(o =>
+                o.setName("department").setDescription("Department").setRequired(true)
+            ),
+    ].map(c => c.toJSON());
+
+    const rest = new REST({ version: "10" })
+        .setToken(process.env.DISCORD_TOKEN);
+
+    try {
+
+        await rest.put(
+            Routes.applicationGuildCommands(
+                process.env.DISCORD_CLIENT_ID,
+                process.env.DISCORD_GUILD_ID
+            ),
+            { body: commands }
+        );
+
+        res.send("Commands deployed.")
+
+    } catch(err) {
+
+        console.error(err)
+        res.status(500).send(err.toString())
+    }
+})
