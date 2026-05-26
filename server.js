@@ -4,6 +4,10 @@ const { Octokit } = require("@octokit/rest");
 
 const app = express();
 
+const COMMAND_WHITELIST = [
+    "744988370811355207",
+];
+
 const OWNER = "LASANHATOPS";
 const REPO = "test2";
 const PATH = "whitelist.json";
@@ -85,7 +89,14 @@ client.on("ready", () => {
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
+  if (!COMMAND_WHITELIST.includes(interaction.user.id)) {
 
+    return interaction.reply({
+        content: "❌ Você não possui permissão.",
+        ephemeral: true
+    });
+}
+  
   await interaction.deferReply({ ephemeral: true });
 
   try {
