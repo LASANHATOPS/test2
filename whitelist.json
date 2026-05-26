@@ -4,7 +4,7 @@
     "Security Department": ["LASANHATOPS"],
     "Scientific Department": [],
     "Medical Department": [],
-    "Mobile Task Force": []
+    "Mobile Task Force": ["LASANHATOPS"]
   },
   "customMorphWhitelist": ["LASANHATOPS"]
 }
