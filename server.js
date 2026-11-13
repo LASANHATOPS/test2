@@ -19,10 +19,24 @@ async function channelFor(id, fallback) {
 }
 
 const commands = [
-  ["marcar-bssu", "Cria uma enquete para marcar uma BSSU", "horario", "Data e horário planejados"],
-  ["pedir-bssu", "Solicita a abertura de uma BSSU", "motivo", "Explique o que será construído"],
-  ["abrir-bssu", "Anuncia que uma BSSU foi aberta", "detalhes", "Link, código ou instruções"],
-].map(([name, description, optionName, optionDescription]) => new SlashCommandBuilder().setName(name).setDescription(description).addStringOption(option => option.setName(optionName).setDescription(optionDescription).setRequired(false)).toJSON());
+  new SlashCommandBuilder()
+    .setName("marcar-bssu")
+    .setDescription("Cria uma enquete com horários para a BSSU")
+    .addStringOption(option => option.setName("horario_1").setDescription("Primeira opção de horário").setRequired(true))
+    .addStringOption(option => option.setName("horario_2").setDescription("Segunda opção de horário").setRequired(false))
+    .addStringOption(option => option.setName("horario_3").setDescription("Terceira opção de horário").setRequired(false))
+    .addStringOption(option => option.setName("horario_4").setDescription("Quarta opção de horário").setRequired(false))
+    .addStringOption(option => option.setName("horario_5").setDescription("Quinta opção de horário").setRequired(false)),
+  new SlashCommandBuilder()
+    .setName("pedir-bssu")
+    .setDescription("Solicita a abertura de uma BSSU")
+    .addStringOption(option => option.setName("motivo").setDescription("Explique o que será construído").setRequired(false)),
+  new SlashCommandBuilder()
+    .setName("abrir-bssu")
+    .setDescription("Anuncia que uma BSSU foi aberta")
+    .addStringOption(option => option.setName("nome").setDescription("Nome do servidor").setRequired(false))
+    .addStringOption(option => option.setName("senha").setDescription("Senha do servidor").setRequired(false)),
+].map(command => command.toJSON());
 
 async function registerCommands() {
   if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_GUILD_ID) {
@@ -40,6 +54,32 @@ function replyEphemeral(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
 }
 
+async function announcePollResult(channel, messageId) {
+  try {
+    const message = await channel.messages.fetch(messageId);
+    const poll = message.poll;
+    if (!poll) return;
+
+    const answers = [...poll.answers.values()];
+    const highestVoteCount = Math.max(...answers.map(answer => answer.voteCount));
+    const winners = answers
+      .filter(answer => answer.voteCount === highestVoteCount)
+      .map(answer => answer.text)
+      .join(" **ou** ");
+    const resultsChannel = await channelFor(process.env.BSSU_RESULTS_CHANNEL_ID, channel);
+    const result = highestVoteCount > 0
+      ? `🏆 Horário vencedor: **${winners}** com **${highestVoteCount}** voto(s).`
+      : "⚠️ A enquete terminou sem votos.";
+
+    await resultsChannel.send({
+      content: `${mentions()}\n📊 **Resultado da enquete BSSU**\n${result}`,
+      allowedMentions: { roles: openers.roles, users: openers.users },
+    });
+  } catch (error) {
+    console.error("BSSU poll result announcement failed:", error);
+  }
+}
+
 client.once("clientReady", async () => {
   console.log(`BSSU bot online: ${client.user.tag}`);
   try { await registerCommands(); } catch (error) { console.error("Command registration failed:", error); }
@@ -52,8 +92,16 @@ client.on("interactionCreate", async interaction => {
     if (interaction.commandName === "marcar-bssu") {
       if (!canOpen(interaction)) return replyEphemeral(interaction, "❌ Você não pode marcar BSSU.");
       const channel = await channelFor(process.env.BSSU_POLL_CHANNEL_ID, interaction.channel);
-      const horario = interaction.options.getString("horario") || "a definir";
-      await channel.send({ poll: { question: { text: `📅 BSSU — disponibilidade (${horario})` }, answers: [{ poll_media: { text: "✅ Consigo participar" } }, { poll_media: { text: "❌ Não consigo participar" } }, { poll_media: { text: "🤔 Talvez" } }], duration: pollHours, allow_multiselect: false } });
+      const horarios = ["horario_1", "horario_2", "horario_3", "horario_4", "horario_5"]
+        .map(option => interaction.options.getString(option))
+        .filter(Boolean);
+      const message = await channel.send({ poll: {
+        question: { text: "📅 Qual horário você prefere para a BSSU?" },
+        answers: horarios.map(text => ({ text })),
+        duration: pollHours,
+        allowMultiselect: false,
+      }});
+      setTimeout(() => announcePollResult(channel, message.id), pollHours * 60 * 60 * 1000);
       return replyEphemeral(interaction, `✅ Enquete enviada em ${channel}.`);
     }
     if (interaction.commandName === "pedir-bssu") {
@@ -67,8 +115,9 @@ client.on("interactionCreate", async interaction => {
     if (interaction.commandName === "abrir-bssu") {
       if (!canOpen(interaction)) return replyEphemeral(interaction, "❌ Você não pode abrir BSSU.");
       const channel = await channelFor(process.env.BSSU_ANNOUNCEMENT_CHANNEL_ID, interaction.channel);
-      const detalhes = interaction.options.getString("detalhes") || "Entrem no servidor para participar.";
-      await channel.send({ content: `@everyone\n🏗️ **BSSU ABERTA!**\n${detalhes}\n\nAberta por ${interaction.user}.`, allowedMentions: { parse: ["everyone"] } });
+      const nome = interaction.options.getString("nome") || "「:tools:」-{ Área-14 | :flag_br:  }-「:tools:」";
+      const senha = interaction.options.getString("senha") || ".....";
+      await channel.send({ content: `${nome}\n\nSenha: ${senha}\n\n@everyone`, allowedMentions: { parse: ["everyone"] } });
       return replyEphemeral(interaction, `✅ Anúncio enviado em ${channel}.`);
     }
     return replyEphemeral(interaction, "❌ Comando desconhecido.");
